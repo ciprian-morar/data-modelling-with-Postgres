@@ -25,13 +25,7 @@ PRIMARY KEY(song_id));
 """)
 
 songplay_table_create = ("""CREATE TABLE IF NOT EXISTS songplays 
-(songplay_id varchar, level varchar, session_id int, location varchar, user_id varchar, song_id varchar, artist_id varchar, start_time timestamp,
-CONSTRAINT artist_id
-   FOREIGN KEY(artist_id) 
-      REFERENCES artists(artist_id),
-CONSTRAINT song_id
-   FOREIGN KEY(song_id) 
-      REFERENCES songs(song_id),
+(songplay_id varchar, start_time timestamp, user_id varchar, level varchar, song_id varchar DEFAULT NULL, artist_id varchar DEFAULT NULL, session_id int, location varchar, user_agent varchar, 
 CONSTRAINT user_id
    FOREIGN KEY(user_id) 
       REFERENCES users(user_id),

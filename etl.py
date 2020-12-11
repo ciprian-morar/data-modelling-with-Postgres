@@ -7,10 +7,17 @@ from datetime import datetime
 from sql_queries import *
 from io import StringIO
 
+"""I've added global variable index_songplay = 0 because I need to maintain the value of songplays_ids 
+separately from functions(processlog_file) which execute one time per every file. 
+I just update it when these functions are executed."""
 index_songplay = 0
+'''Column_data_types it\'s a dictionary of dictionaries used to store columns data types for each of the tables in the Postgresql Database
+You can check in sql queries data_types_select'''
 columns_data_types = {}
 
 def get_columns_data_types(cur):
+    '''This function is used to get data and columns data types for each of the tables in the Postgresql Database and store it in local memory 
+    (dictionary columns_data_types) '''
     global columns_data_types
     cur.execute(data_types_select)
     
@@ -24,15 +31,17 @@ def get_columns_data_types(cur):
         row = cur.fetchone()
 
 def data_quality_checks(table, df):
-    #check if data is a list for one row
+    '''Compare data types in columns_data_types dictionary with the data types in each column of the dataframe. 
+    I\'m going to insert in the postgresql tables. So when I found a data type in the database as integer or numeric 
+    I transform the entire column of the dataframe to int or float.''' 
     global columns_data_types
     
     if table in columns_data_types.keys():
         for key, value in columns_data_types[table].items():
                 
-            if value == "character varying": 
+            if value == "character varying":
                 if(str(df[key].dtypes) != "object"):
-                    df[key] = df[key].astype("str") 
+                    df[key] = df[key].astype("object")
             elif value == "integer":
                 if(str(df[key].dtypes).find("int") == -1):
                     df[key] = df[key].astype("int")
@@ -50,6 +59,7 @@ def data_quality_checks(table, df):
 
 
 def process_song_file(cur, filepath, conn):
+    '''Get the data from each song file and save it in tables artists and songs'''
     # open song file
     f = open(filepath)
     data = json.load(f)
@@ -72,44 +82,40 @@ def process_song_file(cur, filepath, conn):
     song_data = list(song_data)
     cur.execute(song_table_insert, song_data)
     
-def copy_from_stringio(conn, df, table, index_label):
+def copy_from_stringio(conn, df, table, index_label, cur):
     """
-    Here we are going save the dataframe in memory 
+    Using this function we save the dataframe in a temporary file 
     and use copy_from() to copy it to the table
     """
 
     df.drop_duplicates(subset=index_label, 
                      keep = 'last', inplace = True)
-#     if(table =="users"):
-#         pd.set_option("display.max_rows", None, "display.max_columns", None)
-#         print(df)
-#         return
     
     
-    # save dataframe to an in memory buffer
-    buffer = StringIO()
-    df.to_csv(buffer, index=False, header=False)
-    buffer.seek(0)
-    
-    cursor = conn.cursor()
-#     print(buffer.read())
+    # save dataframe to a file on the disc
+    tmp_df = "./tmp_dataframe.csv"
+    df.to_csv(tmp_df, index=False, header=False, sep="\t")
+    f = open(tmp_df, 'r')
     
     try:
         
-        cursor.copy_from(buffer, table, sep=",")
+        cur.copy_from(f, table, sep="\t")
         conn.commit()
     except (Exception, psycopg2.DatabaseError) as error:
-        
+        os.remove(tmp_df)
         print("Error: %s" % error)
         conn.rollback()
-        cursor.close()
+        cur.close()
         return 1
     print("copy_from_stringio() done")
-#     raise Exception("Sorry, no numbers below zero")
-    cursor.close()
+    # remove the file from the disc
+    os.remove(tmp_df)
 
 
 def process_log_file(cur, filepath, conn):
+    """
+    Adding data collected from log files to time, users and songplays table
+    """
     global index_songplay
     # open log file
     df = pd.read_json(filepath, lines = True)
@@ -128,8 +134,7 @@ def process_log_file(cur, filepath, conn):
     column_labels = ("start_time", "hour", "day", "week", "month", "year", "weekday")
     time_df = pd.DataFrame({c:d for c,d in zip(column_labels, time_data)})
     time_df = data_quality_checks("time", time_df)
-#   copy_from_stringio(conn, time_df, 'time', 'start_time')
-#   old implementation isert row by row in time table
+
     for i, row in time_df.iterrows():
         cur.execute(time_table_insert, list(row))
 
@@ -137,8 +142,7 @@ def process_log_file(cur, filepath, conn):
     user_df = df.filter(['userId', 'firstName', 'lastName', 'gender', 'level'])
     user_df.rename(columns={"userId": "user_id", "firstName": "first_name", "lastName": "last_name"}, inplace=True)
     user_df = data_quality_checks("users", user_df)
-#         copy_from_stringio(conn, user_df, 'users', ['user_id', 'first_name', 'last_name'])
-#     old implementation insert user records
+
     for i, row in user_df.iterrows():
         cur.execute(user_table_insert, row)
 
@@ -157,17 +161,14 @@ def process_log_file(cur, filepath, conn):
             # insert songplay record
         songplay_data = {'songplay_id': index_songplay, 'start_time': row.ts, 'user_id':row.userId, 'level':row.level, 'song_id':songid, 'artist_id':artistid, 'session_id':row.sessionId, 'location':row.location, 'user_agent':row.userAgent} #,
         songplay_df = songplay_df.append(songplay_data, ignore_index = True)
-#         old insert songplay
-#         cur.execute(songplay_table_insert, songplay_data)
         index_songplay += 1
-#     songplay_df = data_quality_checks("songplays", songplay_df)
-    print(songplay_df['level'].isnull().sum())
-#    songplay_df = songplay_df.assign(location='France')
-#   songplay_df = songplay_df.assign(user_agent='Mozilla')
-    copy_from_stringio(conn, songplay_df, 'songplays', 'songplay_id')
+    copy_from_stringio(conn, songplay_df, 'songplays', 'songplay_id', cur)
 
 
 def process_data(cur, conn, filepath, func):
+    """
+    Iterate recursively through all the files in the directory and subdirectories and call the process functions
+    """
     # get all files matching extension from directory
     all_files = []
     for root, dirs, files in os.walk(filepath):
@@ -187,6 +188,9 @@ def process_data(cur, conn, filepath, func):
 
 
 def main():
+    """
+    Connect to the database and call process data functions. Open and close the connection to the database.
+    """
     conn = psycopg2.connect("host=127.0.0.1 dbname=sparkifydb user=student password=student")
     conn.autocommit = True
     cur = conn.cursor()
@@ -194,7 +198,7 @@ def main():
 
     process_data(cur, conn, filepath='data/song_data', func=process_song_file)
     process_data(cur, conn, filepath='data/log_data', func=process_log_file)
-
+    
     conn.close()
 
 
