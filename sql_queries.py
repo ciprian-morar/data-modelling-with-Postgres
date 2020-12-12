@@ -8,80 +8,92 @@ time_table_drop = "DROP TABLE IF EXISTS time;"
 
 # CREATE TABLES
 
-user_table_create = ("""CREATE TABLE IF NOT EXISTS users 
-(user_id varchar, first_name varchar, last_name varchar, gender varchar, level varchar, PRIMARY KEY(user_id));
+user_table_create = ("""CREATE TABLE IF NOT EXISTS users
+(user_id varchar, first_name varchar, last_name varchar,
+gender varchar, level varchar, PRIMARY KEY(user_id));
 """)
 
 artist_table_create = ("""CREATE TABLE IF NOT EXISTS artists \
-(artist_id varchar, name varchar, location varchar, latitude numeric, longitude numeric, PRIMARY KEY(artist_id));
+(artist_id varchar, name varchar, location varchar,
+latitude numeric, longitude numeric, PRIMARY KEY(artist_id));
 """)
 
-song_table_create = ("""CREATE TABLE IF NOT EXISTS songs 
-(song_id varchar, title varchar, year int, duration numeric, artist_id varchar,
+song_table_create = ("""CREATE TABLE IF NOT EXISTS songs
+(song_id varchar, title varchar, year int, duration numeric, artist_id varchar not null,
       CONSTRAINT artist_id
-   FOREIGN KEY(artist_id) 
+   FOREIGN KEY(artist_id)
       REFERENCES artists(artist_id),
 PRIMARY KEY(song_id));
 """)
 
-songplay_table_create = ("""CREATE TABLE IF NOT EXISTS songplays 
-(songplay_id varchar, start_time timestamp, user_id varchar, level varchar, song_id varchar DEFAULT NULL, artist_id varchar DEFAULT NULL, session_id int, location varchar, user_agent varchar, 
+songplay_table_create = ("""CREATE TABLE IF NOT EXISTS songplays
+(songplay_id serial, start_time timestamp not null, user_id varchar not null, level varchar,
+song_id varchar DEFAULT NULL, artist_id varchar DEFAULT NULL, session_id int, location varchar,
+user_agent varchar,
 CONSTRAINT user_id
-   FOREIGN KEY(user_id) 
+   FOREIGN KEY(user_id)
       REFERENCES users(user_id),
 CONSTRAINT start_time
-   FOREIGN KEY(start_time) 
+   FOREIGN KEY(start_time)
       REFERENCES time(start_time),
 PRIMARY KEY(songplay_id));
 """)
 
 
 
-time_table_create = ("""CREATE TABLE IF NOT EXISTS time 
+time_table_create = ("""CREATE TABLE IF NOT EXISTS time
 (start_time timestamp, hour int, day int, week int, month int, year int, weekday int,
 PRIMARY KEY(start_time));
 """)
 
-# songplay_table_create = ("""CREATE TABLE IF NOT EXISTS songplays 
+# songplay_table_create = ("""CREATE TABLE IF NOT EXISTS songplays
 # (songplay_id varchar, level varchar, session_id int, location varchar, artist_id varchar,
 # CONSTRAINT artist_id
-#    FOREIGN KEY(artist_id) 
+#    FOREIGN KEY(artist_id)
 #       REFERENCES artists(artist_id),
 # PRIMARY KEY(songplay_id));
 # """)
 
 
 # INSERT RECORDS
-songplay_table_insert = ("""INSERT INTO songplays(songplay_id, start_time, user_id, level, song_id, artist_id, session_id, location, user_agent) \
+songplay_table_insert = ("""
+INSERT INTO songplays(songplay_id, start_time, user_id, level, song_id, artist_id,
+session_id, location, user_agent)
 VALUES (%s, %s,%s,%s,%s, %s, %s, %s,%s)
 ON CONFLICT(songplay_id)
 DO UPDATE
-   SET start_time=EXCLUDED.start_time, user_id=EXCLUDED.user_id, song_id=EXCLUDED.song_id, artist_id=EXCLUDED.artist_id, level  = EXCLUDED.level, session_id = EXCLUDED.session_id, location = EXCLUDED.location, user_agent = EXCLUDED.user_agent;
+   SET start_time=EXCLUDED.start_time, user_id=EXCLUDED.user_id,
+   song_id=EXCLUDED.song_id, artist_id=EXCLUDED.artist_id,
+   level  = EXCLUDED.level, session_id = EXCLUDED.session_id,
+   location = EXCLUDED.location, user_agent = EXCLUDED.user_agent;
 """)
 
-user_table_insert = ("""INSERT INTO users(user_id, first_name, last_name, gender, level) \
+user_table_insert = ("""INSERT INTO users(user_id, first_name, last_name, gender, level)
 VALUES (%s, %s,%s,%s,%s)
 ON CONFLICT(user_id)
 DO UPDATE
-   SET last_name  = EXCLUDED.last_name, first_name  = EXCLUDED.first_name, gender  = EXCLUDED.gender, level = EXCLUDED.level;
+   SET last_name  = EXCLUDED.last_name, first_name  = EXCLUDED.first_name,
+   gender  = EXCLUDED.gender, level = EXCLUDED.level;
 """)
 
-song_table_insert = ("""INSERT INTO songs(song_id, title, artist_id, year, duration) \
-VALUES (%s, %s,%s,%s,%s) 
+song_table_insert = ("""INSERT INTO songs(song_id, title, artist_id, year, duration)
+VALUES (%s, %s,%s,%s,%s)
 ON CONFLICT(song_id)
 DO UPDATE
-   SET title=EXCLUDED.title, artist_id=EXCLUDED.artist_id, year  = EXCLUDED.year, duration = EXCLUDED.duration;
+   SET title=EXCLUDED.title, artist_id=EXCLUDED.artist_id,
+   year  = EXCLUDED.year, duration = EXCLUDED.duration;
 """)
 
-artist_table_insert = ("""INSERT INTO artists(artist_id, name, location, latitude, longitude) \
+artist_table_insert = ("""INSERT INTO artists(artist_id, name, location, latitude, longitude)
 VALUES (%s, %s,%s,%s,%s)
 ON CONFLICT(artist_id)
 DO UPDATE
-   SET name=EXCLUDED.name, location  = EXCLUDED.location, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude;
+   SET name=EXCLUDED.name, location  = EXCLUDED.location,
+   latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude;
 """)
 
 
-time_table_insert = ("""INSERT INTO time(start_time, hour, day, week, month, year, weekday) \
+time_table_insert = ("""INSERT INTO time(start_time, hour, day, week, month, year, weekday)
 VALUES (%s, %s,%s,%s,%s,%s,%s)
 ON CONFLICT(start_time)
 DO NOTHING;
@@ -101,5 +113,22 @@ drop_table_queries = [songplay_table_drop, user_table_drop, song_table_drop, art
 
 # COlumns Data Types
 data_types_select = ("""
-SELECT table_name, column_name, data_type from information_schema.columns WHERE table_name='users' OR table_name='songplays' OR table_name='artists' OR table_name='time' OR table_name='songs';
+SELECT table_name, column_name, data_type from information_schema.columns
+WHERE table_name='users' OR table_name='songplays'
+OR table_name='artists' OR table_name='time' OR table_name='songs';
+""")
+
+constraint_keys_select= ("""
+SELECT
+    ccu.column_name AS foreign_column_name
+FROM
+    information_schema.table_constraints AS tc
+    JOIN information_schema.key_column_usage AS kcu
+      ON tc.constraint_name = kcu.constraint_name
+      AND tc.table_schema = kcu.table_schema
+    JOIN information_schema.constraint_column_usage AS ccu
+      ON ccu.constraint_name = tc.constraint_name
+      AND ccu.table_schema = tc.table_schema
+WHERE tc.constraint_type =%s AND tc.table_name=%s
+GROUP BY foreign_column_name;
 """)
