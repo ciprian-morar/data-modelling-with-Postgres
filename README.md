@@ -6,7 +6,7 @@ The second requirement is to have python 3 version installed to execute the scri
 You can test a version of code writed in etl.py in etl.ipynb. In this file I've changed the order I add data in the 
 songs and artists table. Artists are entered first because in the songs table I need to add a reference of artist_id
 
-First step Open a terminal, assure in the right folder and execute the command python3 create_tables.py
+First step Open a terminal, assure you're in the right folder and execute the command python3 create_tables.py
 Second step: Execute the command python3 etl.py
 You can use test.ipynb notebook to test the database tables or analytics.ipynb to make some analysis with the data 
 new added in the database.
@@ -30,7 +30,7 @@ I set the **primary keys** for each of the tables.
 
 I've choosed data types for the columns in tables based on their specific content: serial, timestamp, int, numeric, varchar
 
-I used autoincrement serial for songplays table primary_key. But because I used **copy_from** for insert at this moment 
+I used autoincrement serial data type for songplays table primary_key. But because I used **copy_from** for insert at this moment 
 I still generate the primary Key from the code.
 
 I used the function **get_columns_data_types** to get automatically in code the data types of the columns from the 
@@ -40,6 +40,8 @@ I used the function **data_quality_checks** to compare data types in dataframe w
 the database. So when I found a data type in the database as integer or numeric I transform the entire column of the dataframe 
 to int or float.
 
+In **sql_queries.py** I added data_types_select query to use it in the quality_data_checks algorithm.
+
 I added **NOT NULL constraints** for the foreign keys in the songs, songplays and time tables. As I saw Foreign Constraints are also NULL by default.
 
 In **process_log_file** function I joined data from artists and songs tables to check a match with the rows in log data files based on the artist name,  
@@ -48,13 +50,13 @@ this case and for the name of the files the same ) and I suppose the last versio
 correct one(the last updated) so I used **UPSERT** for songs, artists, users, and time tables.
 
 For the songplay table I added songplay_id as the primary key. The same like above I used UPSERT instead of insert for this 
-table. Because the FOREIGN KEYS artists_id and song_id have null values I removed those constraints(FOREIGN KEYS).Please provide 
-me a solution if it exist to add Foreign Keys with posibility of the values to be NULL
+table. Because the FOREIGN KEYS artists_id and song_id have null values I removed those constraints(FOREIGN KEYS). I'm searching
+ a solution if it exist to add Foreign Keys with posibility of the values to be NULL
 
-For copy_from I tested it also with other tables like artists and users. Can you provide to me an UPSERT method for copy_from? 
+For copy_from I tested it also with other tables like artists and users. I didn't found UPSERT method for copy_from. 
 It can be used only if I'm not going to add duplicate data.
 
-I **sql_queries.py** I added data_types_select and constraint_keys_select queries to use them in the quality_data_checks algorithm.
+
 
 
 ## 3. Provide example queries and results for song play analysis.
