@@ -11,7 +11,7 @@ Second step: Execute the command python3 etl.py
 You can use test.ipynb notebook to test the database tables or analytics.ipynb to make some analysis with the data 
 new added in the database.
 
-## 1. Discuss the purpose of this database in the context of the startup, Sparkify, and their analytical goals.
+## 1. The purpose of this database in the context of the startup, Sparkify, and their analytical goals.
 The client wants to collect songs and user activities from their new streaming app.
 The **purpose of collecting data** is to understand better the preferences of their **users**. Who are the users?(their name, gender, 
 location and if they are currently paying users, and the broswer(user agent) they use. Also we are interested what are their 
@@ -24,7 +24,7 @@ Some cases would be to add new songs from specific artists which are the most wa
 with **recommended songs** in the app. To create an event in a location where one or more artists have the most fans in our 
 app or to be sponsor at this kind of event or **sell those data** to other parties directly interested in this.(Event organizers, radio channels).
 
-## 2.State and justify your database schema design and ETL pipeline.
+## 2. Database schema design and ETL pipeline.
 
 I set the **primary keys** for each of the tables.
 
@@ -59,11 +59,10 @@ It can be used only if I'm not going to add duplicate data.
 
 
 
-## 3. Provide example queries and results for song play analysis.
+## 3. Example queries and results for song play analysis.
 
 # Select the location of the users and the number of users grouped by location
     SELECT location, COUNT(DISTINCT user_id) FROM songplays GROUP BY location;
-
 
 # Group your users by gender:    
     SELECT gender, COUNT(user_id) FROM users GROUP BY gender;
